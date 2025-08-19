@@ -41,7 +41,6 @@ jobs:
 
       - name: Install Meson/Ninja + libarchive (needed by iSH build scripts)
         run: |
-          python3 -m pip install --upgrade pip --break-system-packages
           python3 -m pip install meson ninja --break-system-packages
           brew update
           brew install libarchive || true
