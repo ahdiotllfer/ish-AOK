@@ -1,0 +1,50 @@
+name: Enumerate & (Optionally) Test Build Schemes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  enumerate:
+    runs-on: macos-latest
+
+    env:
+      PROJECT_PATH: iSH-AOK.xcodeproj
+      DEST_SIMULATOR: 'platform=iOS Simulator,name=iPhone 16'
+      CONFIGURATION: Release
+      SIGNING_ALLOWED: NO
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: List available Xcode schemes
+        id: list_schemes
+        run: |
+          echo "Listing schemes for project: $PROJECT_PATH"
+          SCHEMES=$(xcodebuild -list -project "$PROJECT_PATH" | awk '/Schemes:/{flag=1;next} /Build Configurations:/{flag=0} flag' | sed 's/^[[:space:]]*//g')
+          echo "FOUND_SCHEMES<<EOF" >> $GITHUB_OUTPUT
+          echo "$SCHEMES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Show found schemes
+        run: |
+          echo ">> Available schemes:"
+          echo "${{ steps.list_schemes.outputs.FOUND_SCHEMES }}"
+
+      - name: (Optional) Test build each scheme on simulator
+        if: ${{ false }}   # set to true when you want to activate this
+        run: |
+          for scheme in ${{ steps.list_schemes.outputs.FOUND_SCHEMES }}; do
+            echo "----- Building scheme: $scheme"
+            xcodebuild build-for-testing \
+              -project "$PROJECT_PATH" \
+              -scheme "$scheme" \
+              -configuration "$CONFIGURATION" \
+              -destination "$DEST_SIMULATOR" \
+              CODE_SIGNING_ALLOWED=$SIGNING_ALLOWED \
+              | xcpretty || echo "Build failed for scheme: $scheme"
+          done
+          
