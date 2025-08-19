@@ -51,6 +51,7 @@ jobs:
             -project "iSH-AOK.xcodeproj" \
             -scheme "${SCHEME}" \
             -configuration "${CONFIG}" \
+            -destination 'platform=iOS, name=Any iOS Device (arm64)' \
             -archivePath "$PWD/build_out/ish-aok.xcarchive" \
             PRODUCT_BUNDLE_IDENTIFIER="${ROOT_BUNDLE_IDENTIFIER}" \
             ROOT_BUNDLE_IDENTIFIER="${ROOT_BUNDLE_IDENTIFIER}" \
