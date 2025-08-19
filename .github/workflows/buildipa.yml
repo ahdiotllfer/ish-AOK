@@ -1,0 +1,77 @@
+name: Build iSH-AOK Unsigned IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      scheme:
+        description: "Xcode scheme (try 'iSH' or 'iSH-AOK')"
+        required: false
+        default: "iSH"
+      configuration:
+        description: "Build configuration"
+        required: false
+        default: "Release"
+      bundle_id:
+        description: "Bundle identifier override (ROOT_BUNDLE_IDENTIFIER)"
+        required: false
+        default: "com.example.ish-aok"
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    env:
+      SCHEME: ${{ inputs.scheme }}
+      CONFIG: ${{ inputs.configuration }}
+      ROOT_BUNDLE_IDENTIFIER: ${{ inputs.bundle_id }}
+
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: List available Xcode schemes (for debugging)
+        run: |
+          xcodebuild -list -project "iSH-AOK.xcodeproj" || true
+
+      - name: Install Meson/Ninja + libarchive (needed by iSH build scripts)
+        run: |
+          python3 -m pip install --upgrade pip
+          python3 -m pip install meson ninja
+          brew update
+          brew install libarchive || true
+
+      - name: Build & Archive (unsigned, no codesign)
+        run: |
+          xcodebuild \
+            -project "iSH-AOK.xcodeproj" \
+            -scheme "${SCHEME}" \
+            -configuration "${CONFIG}" \
+            -archivePath "$PWD/build_out/ish-aok.xcarchive" \
+            PRODUCT_BUNDLE_IDENTIFIER="${ROOT_BUNDLE_IDENTIFIER}" \
+            ROOT_BUNDLE_IDENTIFIER="${ROOT_BUNDLE_IDENTIFIER}" \
+            CODE_SIGNING_ALLOWED=NO \
+            clean archive | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Package unsigned IPA
+        run: |
+          APP_PATH="$PWD/build_out/ish-aok.xcarchive/Products/Applications"
+          APP_NAME="$(ls "$APP_PATH" | head -n1)"
+          echo "Detected .app: $APP_NAME"
+          mkdir -p Payload
+          cp -R "$APP_PATH/$APP_NAME" Payload/
+          zip -qry "iSH-AOK-unsigned.ipa" Payload
+          rm -rf Payload
+          echo "IPA created: iSH-AOK-unsigned.ipa"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: iSH-AOK-unsigned
+          path: iSH-AOK-unsigned.ipa
+          
