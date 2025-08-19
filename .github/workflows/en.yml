@@ -1,0 +1,30 @@
+name: List Xcode Schemes
+
+on:
+  workflow_dispatch:
+
+jobs:
+  list-schemes:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: List available schemes in Xcode project
+        id: list_schemes
+        run: |
+          echo "Listing schemes in project: iSH-AOK.xcodeproj"
+          SCHEMES=$(xcodebuild -list -project "iSH-AOK.xcodeproj" \
+            | awk '/Schemes:/{flag=1; next} /Build Configurations:/{flag=0} flag' \
+            | sed 's/^[[:space:]]*//')
+          echo "AVAILABLE_SCHEMES<<EOF" >> $GITHUB_OUTPUT
+          echo "$SCHEMES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Display discovered schemes
+        run: |
+          echo "Available Schemes:"
+          printf '%s\n' "${{ steps.list_schemes.outputs.AVAILABLE_SCHEMES }}"
